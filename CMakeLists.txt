@@ -13,7 +13,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 ### Compiler options
-set( CMAKE_EXPORT_COMPILE_COMMANDS 1 ) # Emit a compile flags file to support completion engines 
+set( CMAKE_EXPORT_COMPILE_COMMANDS 1 ) # Emit a compile flags file to support completion engines
 
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   # using Clang (linux or apple) or GCC
@@ -22,7 +22,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STR
   SET(DISABLED_WARNINGS " -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-declarations -Wno-missing-braces")
   SET(TRACE_INCLUDES " -H -Wno-error=unused-command-line-argument")
 
-  if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     message("Setting clang-specific options")
     SET(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -ferror-limit=5 -fcolor-diagnostics")
     SET(CMAKE_CXX_FLAGS_DEBUG          "-fsanitize=address -fno-limit-debug-info")
@@ -37,7 +37,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STR
   #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TRACE_INCLUDES}") # uncomment if you need to track down where something is getting included from
   SET(CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG} -g3")
   SET(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
-  SET(CMAKE_CXX_FLAGS_RELEASE        "-march=native -O3 -DNDEBUG")
+  SET(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG")
   SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   # using Visual Studio C++
@@ -67,25 +67,30 @@ find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 message("\n\n == CMAKE recursively building Polyscope\n")
 add_subdirectory("deps/polyscope")
 
+# Use CoMISo
+add_definitions(-DCOMISO_FIELD)
+
 # Add libIGL
-# With these lines commented out, we use libIGL in "header only" mode.  Uncomment to recurse and get the full package.
-# (and see the libIGL build documentation)
-#message("\n\n == CMAKE recursively building libIGL\n")
-#set(LIBIGL_WITH_EMBREE            OFF CACHE BOOL "Use Embree")
-#set(LIBIGL_WITH_OPENGL            OFF CACHE BOOL "Use OpenGL")
-#set(LIBIGL_WITH_OPENGL            OFF CACHE BOOL "Use OpenGL")
-#set(LIBIGL_WITH_OPENGL_GLFW       OFF CACHE BOOL "Use GLFW"  )
-#set(LIBIGL_WITH_OPENGL_GLFW_IMGUI OFF CACHE BOOL "Use ImGui" )
-#add_subdirectory("deps/libIGL")
+list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+add_definitions(-DFETCHCONTENT_SOURCE_DIR_LIBIGL="${CMAKE_CURRENT_SOURCE_DIR}/deps/libigl")
+option(LIBIGL_COPYLEFT_COMISO  "Build target igl_copyleft::comiso" ON)
+include(libigl)
+igl_include(copyleft/comiso)
+
+# Add vcglib
+add_subdirectory("deps/vcglib")
 
 # Create an executable
 add_executable(
-        libIGL-polyscope-example
-        src/main.cpp
-        )
+        nebuta-designer
+        src/decimate.cpp
+        src/developablize.cpp
+        src/main.cpp)
 
 # Include settings
-target_include_directories(libIGL-polyscope-example PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libigl/include")
+target_include_directories(nebuta-designer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libigl/include")
+target_include_directories(nebuta-designer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/xfield_tracer")
+target_include_directories(nebuta-designer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/vcglib")
 
 # Link settings
-target_link_libraries(libIGL-polyscope-example polyscope Eigen3::Eigen)
+target_link_libraries(nebuta-designer polyscope Eigen3::Eigen)
