@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.0)
 
-project("libIGL polyscope example project")
+project("Nebuta-Designer" VERSION 0.1.0)
 
 # Maybe stop from CMAKEing in the wrong place
 if (CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR)
@@ -60,6 +60,10 @@ else()
   message( FATAL_ERROR "Unrecognized compiler [${CMAKE_CXX_COMPILER_ID}]" )
 endif()
 
+# Add args / json
+include_directories(deps/polyscope/deps/args)
+include_directories(deps/polyscope/deps/json/include)
+
 # Find Eigen
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
@@ -93,4 +97,4 @@ target_include_directories(nebuta-designer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/d
 target_include_directories(nebuta-designer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/vcglib")
 
 # Link settings
-target_link_libraries(nebuta-designer polyscope Eigen3::Eigen)
+target_link_libraries(nebuta-designer polyscope Eigen3::Eigen igl::core igl_copyleft::comiso vcglib)

@@ -5,11 +5,10 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License 
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can 
 // obtain one at http://mozilla.org/MPL/2.0/.
-#ifndef RP_DECIMATE_H
-#define RP_DECIMATE_H
+#pragma once
 
-#include "igl/igl_inline.h"
-#include "igl/decimate_callback_types.h"
+#include <igl/igl_inline.h>
+#include <igl/decimate_callback_types.h>
 #include <Eigen/Core>
 
 namespace rp
@@ -116,5 +115,3 @@ namespace rp
     Eigen::VectorXi & J,
     Eigen::VectorXi & I);
 }
-
-#endif

@@ -7,18 +7,18 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #include "./decimate.h"
 
-#include "igl/decimate.h"
-#include "igl/collapse_edge.h"
-#include "igl/edge_flaps.h"
-#include "igl/decimate_trivial_callbacks.h"
-#include "igl/is_edge_manifold.h"
-#include "igl/remove_unreferenced.h"
-#include "igl/slice_mask.h"
-#include "igl/slice.h"
-#include "igl/connect_boundary_to_infinity.h"
-#include "igl/parallel_for.h"
-#include "igl/max_faces_stopping_condition.h"
-#include "igl/shortest_edge_and_midpoint.h"
+#include <igl/decimate.h>
+#include <igl/collapse_edge.h>
+#include <igl/edge_flaps.h>
+#include <igl/decimate_trivial_callbacks.h>
+#include <igl/is_edge_manifold.h>
+#include <igl/remove_unreferenced.h>
+#include <igl/slice_mask.h>
+#include <igl/slice.h>
+#include <igl/connect_boundary_to_infinity.h>
+#include <igl/parallel_for.h>
+#include <igl/max_faces_stopping_condition.h>
+#include <igl/shortest_edge_and_midpoint.h>
 
 bool rp::decimate(
   const Eigen::MatrixXd & V,
@@ -33,8 +33,10 @@ bool rp::decimate(
   const int orig_m = F.rows();
   // Tracking number of faces
   int m = F.rows();
-  Eigen::MatrixXd VO;
-  Eigen::MatrixXi FO;
+  typedef Eigen::MatrixXd DerivedV;
+  typedef Eigen::MatrixXi DerivedF;
+  DerivedV VO;
+  DerivedF FO;
   igl::connect_boundary_to_infinity(V,F,VO,FO);
   Eigen::VectorXi EMAP;
   Eigen::MatrixXi E,EF,EI;
