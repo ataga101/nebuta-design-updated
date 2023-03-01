@@ -1,0 +1,418 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						10,
+						11,
+						12
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.0.0"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						3,
+						4,
+						7
+					]
+				},
+				{
+					"build" : "deps/polyscope",
+					"childIndexes" : 
+					[
+						2,
+						9
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-deps.polyscope-Debug-e0fb7a7d96a497698d97.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "deps/polyscope"
+				},
+				{
+					"build" : "deps/polyscope/deps",
+					"childIndexes" : 
+					[
+						3,
+						5,
+						7,
+						8
+					],
+					"jsonFile" : "directory-deps.polyscope.deps-Debug-85cf5cdee18775c74fba.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 1,
+					"source" : "deps/polyscope/deps"
+				},
+				{
+					"build" : "deps/polyscope/deps/glad",
+					"childIndexes" : 
+					[
+						4
+					],
+					"jsonFile" : "directory-deps.polyscope.deps.glad-Debug-c8fe23270fb5c2925ca6.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"parentIndex" : 2,
+					"projectIndex" : 1,
+					"source" : "deps/polyscope/deps/glad"
+				},
+				{
+					"build" : "deps/polyscope/deps/glad/src",
+					"jsonFile" : "directory-deps.polyscope.deps.glad.src-Debug-896d4a167df9b7882403.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.1"
+					},
+					"parentIndex" : 3,
+					"projectIndex" : 1,
+					"source" : "deps/polyscope/deps/glad/src",
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"build" : "deps/polyscope/deps/glfw",
+					"childIndexes" : 
+					[
+						6
+					],
+					"jsonFile" : "directory-deps.polyscope.deps.glfw-Debug-96749ddc7f1c3ffe39b1.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.0"
+					},
+					"parentIndex" : 2,
+					"projectIndex" : 2,
+					"source" : "deps/polyscope/deps/glfw"
+				},
+				{
+					"build" : "deps/polyscope/deps/glfw/src",
+					"jsonFile" : "directory-deps.polyscope.deps.glfw.src-Debug-8eaf267210b92aa4dfc3.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.0"
+					},
+					"parentIndex" : 5,
+					"projectIndex" : 2,
+					"source" : "deps/polyscope/deps/glfw/src",
+					"targetIndexes" : 
+					[
+						2,
+						10
+					]
+				},
+				{
+					"build" : "deps/polyscope/deps/imgui",
+					"jsonFile" : "directory-deps.polyscope.deps.imgui-Debug-03b92c40b672d0d94301.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"parentIndex" : 2,
+					"projectIndex" : 1,
+					"source" : "deps/polyscope/deps/imgui",
+					"targetIndexes" : 
+					[
+						6
+					]
+				},
+				{
+					"build" : "deps/polyscope/deps/stb",
+					"jsonFile" : "directory-deps.polyscope.deps.stb-Debug-4d54ff9a99cd0d83d720.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"parentIndex" : 2,
+					"projectIndex" : 1,
+					"source" : "deps/polyscope/deps/stb",
+					"targetIndexes" : 
+					[
+						9
+					]
+				},
+				{
+					"build" : "deps/polyscope/src",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-deps.polyscope.src-Debug-928694e8c6ef98ab09e3.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 1,
+					"source" : "deps/polyscope/src",
+					"targetIndexes" : 
+					[
+						8
+					]
+				},
+				{
+					"build" : "_deps/libigl-build",
+					"jsonFile" : "directory-_deps.libigl-build-Debug-6b7d8655ff348b039fa7.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.0.0"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 3,
+					"source" : "cmake-build-debug/_deps/libigl-src",
+					"targetIndexes" : 
+					[
+						5
+					]
+				},
+				{
+					"build" : "_deps/comiso-build",
+					"jsonFile" : "directory-_deps.comiso-build-Debug-56e94ef7fe6939d2590d.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.11"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 4,
+					"source" : "cmake-build-debug/_deps/comiso-src",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "deps/vcglib",
+					"jsonFile" : "directory-deps.vcglib-Debug-bf41b8b2b74d238ec9b2.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.10"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 5,
+					"source" : "deps/vcglib",
+					"targetIndexes" : 
+					[
+						11
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1,
+						3,
+						4,
+						5
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "Nebuta-Designer",
+					"targetIndexes" : 
+					[
+						3,
+						4,
+						7
+					]
+				},
+				{
+					"childIndexes" : 
+					[
+						2
+					],
+					"directoryIndexes" : 
+					[
+						1,
+						2,
+						3,
+						4,
+						7,
+						8,
+						9
+					],
+					"name" : "polyscope",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						1,
+						6,
+						8,
+						9
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						5,
+						6
+					],
+					"name" : "GLFW",
+					"parentIndex" : 1,
+					"targetIndexes" : 
+					[
+						2,
+						10
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						10
+					],
+					"name" : "libigl",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						5
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						11
+					],
+					"name" : "CoMISo",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						12
+					],
+					"name" : "VCGLib",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						11
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 11,
+					"id" : "CoMISo::@8e226a14d5c7ee0927bb",
+					"jsonFile" : "target-CoMISo-Debug-9bc9be0f6e40a626060e.json",
+					"name" : "CoMISo",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "glad::@98233e3db7e177071371",
+					"jsonFile" : "target-glad-Debug-ad5b7eabcca2b2e5919e.json",
+					"name" : "glad",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "glfw::@10d7cd74cb252634c37e",
+					"jsonFile" : "target-glfw-Debug-8b606f6097a26e1d31c8.json",
+					"name" : "glfw",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "igl_copyleft_comiso::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-igl_copyleft_comiso-Debug-fddeb4f7dd4cd97c2122.json",
+					"name" : "igl_copyleft_comiso",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "igl_copyleft_core::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-igl_copyleft_core-Debug-5500f94fcc5ad5179ec5.json",
+					"name" : "igl_copyleft_core",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 10,
+					"id" : "igl_core::@7e03116a751a0a925ea3",
+					"jsonFile" : "target-igl_core-Debug-a217f3acb78800aaca8e.json",
+					"name" : "igl_core",
+					"projectIndex" : 3
+				},
+				{
+					"directoryIndex" : 7,
+					"id" : "imgui::@79a1569c4ce229380b97",
+					"jsonFile" : "target-imgui-Debug-a2f966eccd095858559f.json",
+					"name" : "imgui",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "nebuta-designer::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-nebuta-designer-Debug-bd906ba4f113f93e8d34.json",
+					"name" : "nebuta-designer",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 9,
+					"id" : "polyscope::@d17fc2d76cb0cf7d3ca6",
+					"jsonFile" : "target-polyscope-Debug-34a0c17e50eb4e0f3623.json",
+					"name" : "polyscope",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 8,
+					"id" : "stb::@a816bd2f7ea2b896107d",
+					"jsonFile" : "target-stb-Debug-d4871a20743607abafd5.json",
+					"name" : "stb",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "update_mappings::@10d7cd74cb252634c37e",
+					"jsonFile" : "target-update_mappings-Debug-7b2df3bbe03cdc0cf381.json",
+					"name" : "update_mappings",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 12,
+					"id" : "vcglib_ide::@04e37ce4290119c57425",
+					"jsonFile" : "target-vcglib_ide-Debug-255c76289039373309f4.json",
+					"name" : "vcglib_ide",
+					"projectIndex" : 5
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/Users/nagata/git/nebuta-design-updated/cmake-build-debug",
+		"source" : "/Users/nagata/git/nebuta-design-updated"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 4
+	}
+}

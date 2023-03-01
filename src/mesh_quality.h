@@ -19,13 +19,15 @@
 #include <igl/doublearea.h>
 
 #include "gauss_image_thinning.h"
+#include "triangle_strips.h"
+#include <igl/hausdorff.h>
 
-enum ParamMode{PMConformal,PMArap,PMGaussianCurvature,PMGaussImageThinness};
+enum ParamMode{PMConformal,PMArap,PMGaussianCurvature,PMGaussImageThinness, PMHausdorf};
 
 template <class MeshType>
 class MeshQuality
 {
-    typedef typename MeshType::VertexType VertexType;
+    typedef typename MeshType::VertexType  VertexType;
     typedef typename MeshType::ScalarType  ScalarType;
     typedef typename MeshType::FacePointer FacePointer;
 
@@ -70,6 +72,11 @@ public:
         return MaxV;
     }
 
+    static ScalarType & MaxHausdorff()
+    {
+        static ScalarType MaxV = 0.02 / std::sqrt(AreaScale());
+        return MaxV;
+    }
 
     static bool & RemeshOnTest()
     {
@@ -209,20 +216,19 @@ public:
             return std::max(0., energy-MaxGaussImageThickness());
 
         }
-        //vcg::tri::OptimizeUV_ARAP(m,5,0,true);
-        //vcg::tri::InitializeArapWithLSCM(m,0);
-        
-        //evaluate the distortion
-        //            vcg::tri::Distortion<TraceMesh,false>::SetQasDistorsion(m,vcg::tri::Distortion<TraceMesh,false>::EdgeComprStretch);
-        //            ScalarType A=0;
-        //            for (size_t i=0;i<m.face.size();i++)
-        //            {
-        //                if (m.face[i].Q()<(MinQ()))A+=vcg::DoubleArea(m.face[i]);
-        //                if (m.face[i].Q()>MaxQ())A+=vcg::DoubleArea(m.face[i]);
-        //            }
-        //return (A/SumA);
 
-        //return A;
+        if(UVMode() == PMHausdorf){
+            Eigen::MatrixXd V, resultV;
+            Eigen::MatrixXi F, resultF;
+
+            vcg::tri::MeshToMatrix< MeshType >::GetTriMeshData( m, F, V );
+            tri_strip::approximate_single_patch(V, F, resultV, resultF);
+
+            double hausdorff;
+            igl::hausdorff(V, F, resultV, resultF, hausdorff);
+
+            return std::max(0., hausdorff-MaxHausdorff());
+        }
     }
 };
 

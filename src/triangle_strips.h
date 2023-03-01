@@ -1,3 +1,5 @@
+#ifndef TRIANGLE_STRIPS_H
+#define TRIANGLE_STRIPS_H
 #include <Eigen/Core>
 #include <vector>
 #include <utility>
@@ -205,3 +207,4 @@ namespace tri_strip{
         best_triangle_strip(V, F, resultV, resultF, bnd_loop, mode);
     }
 }
+#endif
