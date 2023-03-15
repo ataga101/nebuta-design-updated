@@ -19,10 +19,10 @@
 #include <igl/doublearea.h>
 
 #include "gauss_image_thinning.h"
-#include "triangle_strips.h"
+#include "approximate_single_patch.h"
 #include <igl/hausdorff.h>
 
-enum ParamMode{PMConformal,PMArap,PMGaussianCurvature,PMGaussImageThinness, PMHausdorf};
+enum ParamMode{PMConformal,PMArap,PMGaussianCurvature,PMGaussImageThinness, PMHausdorff};
 
 template <class MeshType>
 class MeshQuality
@@ -74,7 +74,7 @@ public:
 
     static ScalarType & MaxHausdorff()
     {
-        static ScalarType MaxV = 0.02 / std::sqrt(AreaScale());
+        static ScalarType MaxV = 0.01;
         return MaxV;
     }
 
@@ -217,17 +217,18 @@ public:
 
         }
 
-        if(UVMode() == PMHausdorf){
+        if(UVMode() == PMHausdorff){
             Eigen::MatrixXd V, resultV;
             Eigen::MatrixXi F, resultF;
 
             vcg::tri::MeshToMatrix< MeshType >::GetTriMeshData( m, F, V );
-            tri_strip::approximate_single_patch(V, F, resultV, resultF);
+            double threshold = MaxHausdorff() / m.bbox.Diag();
+            approximate_single_patch::approximate_single_patch(V, F, resultV, resultF);
 
             double hausdorff;
             igl::hausdorff(V, F, resultV, resultF, hausdorff);
 
-            return std::max(0., hausdorff-MaxHausdorff());
+            return std::max(0., hausdorff-threshold);
         }
     }
 };

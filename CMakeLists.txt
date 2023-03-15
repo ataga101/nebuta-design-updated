@@ -89,7 +89,7 @@ add_executable(
         nebuta-designer
         src/decimate.cpp
         src/developablize.cpp
-        src/main.cpp)
+        src/main.cpp src/developablize_quadric.cpp src/approximate_single_patch.h)
 
 # Include settings
 target_include_directories(nebuta-designer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libigl/include")

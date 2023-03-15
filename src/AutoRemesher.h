@@ -35,6 +35,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <vcg/space/index/grid_static_ptr.h>
 #include <vcg/complex/algorithms/closest.h>
 #include <vcg/complex/algorithms/local_optimization/tri_edge_collapse.h>
+#include "vcg/complex/algorithms/create/platonic.h"
+
+#include "igl/upsample.h"
+#include "vcg/complex/algorithms/mesh_to_matrix.h"
 
 #include <memory>
 
@@ -375,7 +379,7 @@ public:
         para.projectFlag  = true;
         para.selectedOnly = false;
         para.adapt=false;
-        para.aspectRatioThr = 0.3;
+        para.aspectRatioThr = 0.1;
         para.cleanFlag = true;
 
         para.minAdaptiveMult = par.minAdaptiveMult;
@@ -416,6 +420,26 @@ public:
         m.UpdateDataStructures();
 
         std::cout << "After Iter 1 - faces: " << m.FN() << " quality: " <<  computeAR(m) << std::endl;
+
+        /*
+        Eigen::MatrixXd V, NV;
+        Eigen::MatrixXi F, NF;
+        vcg::tri::MeshToMatrix<Mesh>::GetTriMeshData(m, F, V);
+
+        igl::upsample(V, F, NV, NF, 1);
+
+        std::vector<std::vector<int>> vec_OF;
+        std::vector<std::vector<double>> vec_OV;
+        for(int i=0; i<NF.rows(); i++){
+            vec_OF.push_back(std::vector<int>{NF(i, 0), NF(i, 1), NF(i, 2)});
+        }
+        for(int i=0; i<NV.rows(); i++){
+            vec_OV.push_back(std::vector<double>{NV(i, 0), NV(i, 1), NV(i, 2)});
+        }
+        vcg::tri::BuildMeshFromCoordVectorIndexVector(m, vec_OV, vec_OF);
+
+        m.UpdateDataStructures();
+         */
 
 //        MakeEdgeSelConsistent(m);
 //        SelectAllBoundaryV(m);

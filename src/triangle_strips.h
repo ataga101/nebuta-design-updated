@@ -167,19 +167,19 @@ namespace tri_strip{
         igl::AABB<Eigen::MatrixXd, 3> tree;
         tree.init(V, F);
 
-        std::cerr << "vertices count: " << V.rows() << std::endl;
-        std::cerr << "boundary count: " << bnd_loop.size() << std::endl;
+        //std::cerr << "vertices count: " << V.rows() << std::endl;
+        //std::cerr << "boundary count: " << bnd_loop.size() << std::endl;
 
         Eigen::MatrixXd N;
         igl::per_vertex_normals(V, F, N);
         fill_triangles_loop(V, F, tree, bnd_loop, memo, N);
 
-        std::cerr << "fill done" << std::endl;
+        //std::cerr << "fill done" << std::endl;
 
         double min_cost = memo[1][0].cost;
 
         for(int i=0; i<bnd_loop.size(); i++){
-            std::cerr << memo[(i+1)%bnd_loop.size()][i].cost << std::endl;
+            //std::cerr << memo[(i+1)%bnd_loop.size()][i].cost << std::endl;
         }
 
         std::vector<Eigen::Vector3i> faces;

@@ -20,7 +20,7 @@
 #include "vcg/complex/algorithms/create/platonic.h"
 #include "cstdio"
 #include "tracing/tracer_interface.h"
-#include "triangle_strips.h"
+#include "approximate_single_patch.h"
 
 #include "polyscope/polyscope.h"
 #include "polyscope/surface_mesh.h"
@@ -48,11 +48,15 @@ private:
     polyscope::SurfaceMesh* polyscopeApproximatedMesh = nullptr;
 
     display_mode current_mode = ORIGINAL;
-    ParamMode quality_measure = PMHausdorf;
+    ParamMode quality_measure = PMHausdorff;
 
     bool remeshed = false;
     bool partitioned = false;
     bool approximated = false;
+
+    // Wire graph infos
+    std::vector<Eigen::Vector3d> wirePos;
+    std::vector<std::array<size_t, 2>> edgeInds;
 
     void set_parameters();
 
@@ -67,7 +71,7 @@ public:
     Eigen::MatrixXi approximatedF;
 
     double Drift = 100;
-    double sample_ratio = 0.1;
+    double sample_ratio = 1;
     bool split_on_removal = false;
     bool CClarkability = false;
     bool match_valence = false;
@@ -76,6 +80,7 @@ public:
     bool final_removal = true;
     bool meta_mesh_collapse = false;
     bool force_split = false;
+    bool allow_trace_loopish = true;
 
 
     NebutaManager();
@@ -87,6 +92,8 @@ public:
     void patch_tracing();
     void developable_approximation();
 
+    void set_visualization_mode(display_mode mode);
+    void set_patch_quality_mode(ParamMode mode);
     void update_visualization();
 };
 
@@ -103,7 +110,17 @@ NebutaManager::NebutaManager()
 NebutaManager::~NebutaManager() {
     if(VGraph != nullptr) delete VGraph;
     if(PTr != nullptr) delete PTr;
+    std::remove((pathM + "_field.rosy").c_str());
 }
+
+void NebutaManager::set_visualization_mode(display_mode mode) {
+    current_mode = mode;
+}
+
+void NebutaManager::set_patch_quality_mode(ParamMode mode) {
+    quality_measure = mode;
+}
+
 
 template<typename MeshType>
 void ConvertToVCGMesh(MeshType &m, Eigen::MatrixXd &V, Eigen::MatrixXi &F){
@@ -145,7 +162,7 @@ void NebutaManager::remesh_and_field_computation() {
 
     typename MeshPrepocess<FieldTriMesh>::BatchParam BPar;
     BPar.DoRemesh=true;
-    BPar.UpdateSharp= false;
+    BPar.UpdateSharp= true;
     MeshPrepocess<FieldTriMesh>::BatchProcess(originalVCGMesh, BPar, FieldParam);
 
     // Save the temporal RoSy Field to file
@@ -171,6 +188,7 @@ void NebutaManager::set_parameters() {
     PTr->CClarkability = CClarkability;
     PTr->match_valence = match_valence;
     PTr->check_quality_functor = check_quality_functor;
+    PTr->AllowTraceLoopish = allow_trace_loopish;
 
     MeshQuality<TraceMesh>::UVMode() = quality_measure;
 }
@@ -196,10 +214,9 @@ void NebutaManager::patch_tracing() {
     std::vector<std::vector<size_t> > _CurrDir;
     std::vector<bool> IsLoop;
 
+    wirePos.clear();
+    edgeInds.clear();
     PTr->GetCurrVertDir(CurrV, _CurrDir, IsLoop);
-
-    std::vector<Eigen::Vector3d> wirePos;
-    std::vector<std::array<size_t, 2>> edgeInds;
 
     size_t start_idx = 0;
 
@@ -215,9 +232,9 @@ void NebutaManager::patch_tracing() {
         start_idx += CurrV[i].size();
     }
 
-    polyscope::SurfaceGraphQuantity* showWires = polyscopePartitionedMesh->addSurfaceGraphQuantity("wires", wirePos,edgeInds);
-    showWires->setEnabled(true);
-    showWires->setColor({0.0, 0.0, 0.0});
+    polyscope::SurfaceGraphQuantity* showWires_partitioned = polyscopePartitionedMesh->addSurfaceGraphQuantity("wires", wirePos,edgeInds);
+    showWires_partitioned->setEnabled(true);
+    showWires_partitioned->setColor({0.0, 0.0, 0.0});
     current_mode = PARTITIONED;
     partitioned = true;
 }
@@ -236,7 +253,9 @@ void NebutaManager::developable_approximation() {
         Eigen::MatrixXd patchV, resultPatchV;
         Eigen::MatrixXi patchF, resultPatchF;
         vcg::tri::MeshToMatrix<TraceMesh>::GetTriMeshData(patchMesh, patchF, patchV);
-        tri_strip::approximate_single_patch(patchV, patchF, resultPatchV, resultPatchF, tri_strip::per_face_distance);
+
+        approximate_single_patch::approximate_single_patch(patchV, patchF, resultPatchV, resultPatchF);
+
         ConvertToVCGMesh(patchMesh, resultPatchV, resultPatchF);
         patchMesh.UpdateAttributes();
 
@@ -247,6 +266,12 @@ void NebutaManager::developable_approximation() {
     vcg::tri::MeshToMatrix<TraceMesh>::GetTriMeshData(approximatedMesh, approximatedF, approximatedV);
     polyscopeApproximatedMesh = polyscope::registerSurfaceMesh("Approximated Mesh", approximatedV, approximatedF);
     polyscopeApproximatedMesh->setSurfaceColor({0.9, 0.9, 0.9});
+
+    // Draw wires
+    polyscope::SurfaceGraphQuantity* showWires_approximated = polyscopeApproximatedMesh->addSurfaceGraphQuantity("wires", wirePos,edgeInds);
+    showWires_approximated->setEnabled(true);
+    showWires_approximated->setColor({0.0, 0.0, 0.0});
+
     current_mode = APPROXIMATED;
 }
 
@@ -272,8 +297,6 @@ void NebutaManager::prepare_tracing() {
     if(!loaded) {
         std::cerr << "Error when loading field" << std::endl;
         exit(1);
-    }else{
-        std::remove((pathM + "_field.rosy").c_str());
     }
 
     // Create the graph

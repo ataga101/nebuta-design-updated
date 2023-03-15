@@ -522,7 +522,7 @@ namespace rp_quadric {
 
         // divide_border(resultV, resultF, newPathVids, pathIds);
         // rp::divide_borders::process(resultV, resultF, newPathVids);
-        std::cout << "non degenerated vertices: " << count << std::endl;
+        // std::cout << "non degenerated vertices: " << count << std::endl;
 
         assert(count == 0);
     }
