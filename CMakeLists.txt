@@ -64,6 +64,9 @@ endif()
 include_directories(deps/polyscope/deps/args)
 include_directories(deps/polyscope/deps/json/include)
 
+# Add developability of triangle mesh
+include_directories(deps/DevelopabilityOfTriangleMeshes/include)
+
 # Find Eigen
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
@@ -79,7 +82,7 @@ list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 add_definitions(-DFETCHCONTENT_SOURCE_DIR_LIBIGL="${CMAKE_CURRENT_SOURCE_DIR}/deps/libigl")
 option(LIBIGL_COPYLEFT_COMISO  "Build target igl_copyleft::comiso" ON)
 include(libigl)
-igl_include(copyleft/comiso)
+# igl_include(copyleft/comiso)
 
 # Add vcglib
 add_subdirectory("deps/vcglib")
@@ -89,7 +92,7 @@ add_executable(
         nebuta-designer
         src/decimate.cpp
         src/developablize.cpp
-        src/main.cpp src/developablize_quadric.cpp src/approximate_single_patch.h)
+        src/main.cpp src/developablize_quadric.cpp src/approximate_single_patch.h src/svg_writer.h src/flatten_triangle_strip.h)
 
 # Include settings
 target_include_directories(nebuta-designer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libigl/include")

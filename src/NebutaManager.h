@@ -8,6 +8,8 @@
 #include <Eigen/Core>
 #include <string>
 #include "mesh_manager.h"
+#include "svg_writer.h"
+#include "flatten_triangle_strip.h"
 #include "fields/field_smoother.h"
 #include "triangle_mesh_type.h"
 #include "poly_mesh_type.h"
@@ -17,10 +19,13 @@
 #include "tracing/patch_tracer.h"
 #include "mesh_quality.h"
 #include "igl/read_triangle_mesh.h"
+#include "igl/harmonic.h"
+#include "igl/map_vertices_to_circle.h"
 #include "vcg/complex/algorithms/create/platonic.h"
 #include "cstdio"
 #include "tracing/tracer_interface.h"
 #include "approximate_single_patch.h"
+#include "developableflow/timestep.h"
 
 #include "polyscope/polyscope.h"
 #include "polyscope/surface_mesh.h"
@@ -72,6 +77,7 @@ public:
 
     double Drift = 100;
     double sample_ratio = 1;
+    double height_in_cm = 15;
     bool split_on_removal = false;
     bool CClarkability = false;
     bool match_valence = false;
@@ -80,8 +86,10 @@ public:
     bool final_removal = true;
     bool meta_mesh_collapse = false;
     bool force_split = false;
-    bool allow_trace_loopish = true;
+    bool allow_trace_loopish = false;
 
+    std::vector<Eigen::MatrixXd> flattenedVs;
+    std::vector<Eigen::MatrixXi> flattenedFs;
 
     NebutaManager();
     ~NebutaManager();
@@ -95,6 +103,9 @@ public:
     void set_visualization_mode(display_mode mode);
     void set_patch_quality_mode(ParamMode mode);
     void update_visualization();
+
+    void save_wire_indices();
+    void save_2d_pattern();
 };
 
 //
@@ -108,6 +119,7 @@ NebutaManager::NebutaManager()
 }
 
 NebutaManager::~NebutaManager() {
+    save_wire_indices();
     if(VGraph != nullptr) delete VGraph;
     if(PTr != nullptr) delete PTr;
     std::remove((pathM + "_field.rosy").c_str());
@@ -140,6 +152,11 @@ void NebutaManager::load_mesh(std::string filename) {
     // Load a mesh
     igl::read_triangle_mesh(filename, originalV, originalF);
 
+    // Rescale the mesh
+    double max_height = (originalV.colwise().maxCoeff() - originalV.colwise().minCoeff()).maxCoeff();
+    std::cerr << "Max height: " << max_height << std::endl;
+    originalV /= max_height;
+
     // Convert to VCG mesh
     ConvertToVCGMesh(originalVCGMesh, originalV, originalF);
     originalVCGMesh.UpdateDataStructures();
@@ -151,6 +168,7 @@ void NebutaManager::load_mesh(std::string filename) {
     // Register to polyscope
     polyscopeOriginalMesh = polyscope::registerSurfaceMesh("Original Mesh", originalV, originalF);
     polyscopeOriginalMesh->setSurfaceColor({0.9, 0.9, 0.9});
+    polyscopeOriginalMesh->setEdgeWidth(1.);
     current_mode = ORIGINAL;
 }
 
@@ -174,6 +192,7 @@ void NebutaManager::remesh_and_field_computation() {
     // Register to polyscope
     polyscopeRemeshedMesh = polyscope::registerSurfaceMesh("Remeshed Mesh", remeshedV, remeshedF);
     polyscopeRemeshedMesh->setSurfaceColor({0.9, 0.9, 0.9});
+    polyscopeRemeshedMesh->setEdgeWidth(1.);
     current_mode = REMESHED;
     remeshed = true;
 }
@@ -207,6 +226,7 @@ void NebutaManager::patch_tracing() {
     // Register to polyscope
     polyscopePartitionedMesh = polyscope::registerSurfaceMesh("Partitioned Mesh", partitionedV, partitionedF);
     polyscopePartitionedMesh->setSurfaceColor({0.9, 0.9, 0.9});
+    polyscopePartitionedMesh->setEdgeWidth(1.);
     current_mode = PARTITIONED;
 
     // Draw wires
@@ -247,6 +267,9 @@ void NebutaManager::developable_approximation() {
 
     TraceMesh approximatedMesh;
 
+    flattenedVs.clear();
+    flattenedFs.clear();
+
     for(auto i=0; i<PTr->Partitions.size(); i++){
         TraceMesh patchMesh;
         PTr->GetPatchMesh(i, patchMesh, false);
@@ -256,6 +279,28 @@ void NebutaManager::developable_approximation() {
 
         approximate_single_patch::approximate_single_patch(patchV, patchF, resultPatchV, resultPatchF);
 
+        // Flatten the mesh
+        Eigen::MatrixXd flattenedPatchV;
+
+        Eigen::VectorXi bnd;
+        igl::boundary_loop(resultPatchF, bnd);
+
+        flatten_triangle_strip(resultPatchV, resultPatchF, Eigen::Vector3d::Zero(), flattenedPatchV);
+
+        double flatten_scale = (resultPatchV.row(bnd(0)) - resultPatchV.row(bnd(1))).norm() / (flattenedPatchV.row(bnd(0)) - flattenedPatchV.row(bnd(1))).norm();
+        flattenedPatchV *= height_in_cm * flatten_scale;
+
+        // remove offset from uv
+        auto offset_vec = flattenedPatchV.colwise().minCoeff();
+
+        for (int i = 0; i < flattenedPatchV.rows(); i++){
+            flattenedPatchV.row(i) -= offset_vec;
+        }
+
+        flattenedVs.push_back(flattenedPatchV);
+        flattenedFs.push_back(resultPatchF);
+
+        // Update vcg mesh
         ConvertToVCGMesh(patchMesh, resultPatchV, resultPatchF);
         patchMesh.UpdateAttributes();
 
@@ -265,6 +310,7 @@ void NebutaManager::developable_approximation() {
     // Store approximated mesh in igl format
     vcg::tri::MeshToMatrix<TraceMesh>::GetTriMeshData(approximatedMesh, approximatedF, approximatedV);
     polyscopeApproximatedMesh = polyscope::registerSurfaceMesh("Approximated Mesh", approximatedV, approximatedF);
+    polyscopeApproximatedMesh->setEdgeWidth(1.);
     polyscopeApproximatedMesh->setSurfaceColor({0.9, 0.9, 0.9});
 
     // Draw wires
@@ -339,6 +385,54 @@ void NebutaManager::update_visualization() {
             if (polyscopePartitionedMesh != nullptr) polyscopePartitionedMesh->setEnabled(false);
             if (polyscopeApproximatedMesh != nullptr) polyscopeApproximatedMesh->setEnabled(true);
             break;
+    }
+}
+
+void NebutaManager::save_wire_indices() {
+    igl::writeOBJ(pathM + "_remeshed.obj", remeshedV, remeshedF);
+    std::ofstream ofs(pathM + "_wire_indices.txt");
+
+    std::vector<std::vector<size_t>> CurrV;
+    std::vector<std::vector<size_t>> _CurrDir;
+    std::vector<bool> IsLoop;
+
+    PTr->GetCurrVertDir(CurrV, _CurrDir, IsLoop);
+
+    int index_size = 0;
+
+    for (auto i = 0; i < CurrV.size(); i++) {
+        index_size += CurrV[i].size();
+    }
+
+    ofs << index_size << std::endl;
+
+    for (auto i = 0; i < CurrV.size(); i++) {
+        for (auto j = 0; j < CurrV[i].size(); j++) {
+            ofs << CurrV[i][j] << " ";
+        }
+        ofs << std::endl;
+    }
+    ofs.close();
+}
+
+void NebutaManager::save_2d_pattern() {
+    int svg_fileid = 1;
+    std::string svg_path = pathM + "_2d_pattern_1.svg";
+
+    svg_writer* now_svg = new svg_writer(svg_path, 21.0, 29.7);
+
+    for (int i=0; i<flattenedVs.size(); i++){
+        bool needs_new_svg = !now_svg->add_patch(flattenedVs[i], flattenedFs[i], i);
+        if(needs_new_svg){
+            delete now_svg;
+            svg_path = pathM + "_2d_pattern_" + std::to_string(svg_fileid) + ".svg";
+            now_svg = new svg_writer(svg_path, 21.0, 29.7);
+            if(!now_svg->add_patch(flattenedVs[i], flattenedFs[i], i)){
+                std::cerr << "Error when writing svg" << std::endl;
+                delete now_svg;
+                break;
+            }
+        }
     }
 }
 

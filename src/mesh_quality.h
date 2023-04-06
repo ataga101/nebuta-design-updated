@@ -56,7 +56,7 @@ public:
 
     static ScalarType & MaxSumOfGaussianCurvature()
     {
-        static ScalarType MaxV=0.045;
+        static ScalarType MaxV=1.5;
         return MaxV;
     }
 
@@ -161,24 +161,20 @@ public:
             Eigen::MatrixXi F;
             Eigen::VectorXd K;
             Eigen::VectorXd dblA;
+            Eigen::VectorXi bnd;
 
             vcg::tri::MeshToMatrix< MeshType >::GetTriMeshData( m, F, V );
             igl::gaussian_curvature(V,F,K);
-            igl::doublearea(V,F,dblA);
+            igl::boundary_loop(F,bnd);
 
             K = K.cwiseAbs();
 
-            double SumOfGaussianCurvature = 0;
-
-            for(int f = 0; f < F.rows();f++)
+            for (int i = 0; i < bnd.rows();i++)
             {
-                for(int c = 0; c < 3;c++)
-                    {
-                        SumOfGaussianCurvature += dblA(f) * K(F(f, c));
-                    }
+                K(bnd(i)) = 0;
             }
 
-            SumOfGaussianCurvature /= AreaScale();
+            double SumOfGaussianCurvature = K.sum();
 
             //std::cerr << "Sum of gaussian curvature:" << SumOfGaussianCurvature << std::endl;
 

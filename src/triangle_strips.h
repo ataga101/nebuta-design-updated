@@ -172,7 +172,7 @@ namespace tri_strip{
 
         Eigen::MatrixXd N;
         igl::per_vertex_normals(V, F, N);
-        fill_triangles_loop(V, F, tree, bnd_loop, memo, N);
+        fill_triangles_loop(V, F, tree, bnd_loop, memo, N, mode);
 
         //std::cerr << "fill done" << std::endl;
 

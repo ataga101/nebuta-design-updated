@@ -23,7 +23,7 @@ namespace approximate_single_patch {
         } else if (approx_mode == QSlim) {
             rp_quadric::approximate_single_patch(V, F, resultV, resultF);
         } else if (approx_mode == DP_normal) {
-            tri_strip::approximate_single_patch(V, F, resultV, resultF);
+            tri_strip::approximate_single_patch(V, F, resultV, resultF, tri_strip::normal_alignment);
         } else if (approx_mode == DP_perface_distance) {
             tri_strip::approximate_single_patch(V, F, resultV, resultF, tri_strip::per_face_distance);
         }

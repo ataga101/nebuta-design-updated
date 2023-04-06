@@ -44,6 +44,11 @@ void callback() {
         nebutaManager.update_visualization();
     }
 
+    if (ImGui::Button("Save SVG")){
+        nebutaManager.save_2d_pattern();
+        nebutaManager.update_visualization();
+    }
+
     ImGui::Text("Mesh Result");
     static int display_mesh_mode = 0;
     enum {
@@ -73,7 +78,7 @@ void callback() {
     }
 
     if(ImGui::TreeNode("Patch Quality Measures")) {
-        static int patch_quality_mode = 0;
+        static int patch_quality_mode = 2;
         enum {
             CONFORMAL,
             ARAP,
@@ -107,7 +112,7 @@ void callback() {
         }
         if (patch_quality_mode == GAUSSIANCURVATURE) {
             float maxV = MeshQuality<TraceMesh>::MaxSumOfGaussianCurvature();
-            ImGui::SliderFloat("Threshold", &maxV, 0.0f, 0.1f);
+            ImGui::SliderFloat("Threshold", &maxV, 0.0f, 10.0f);
             MeshQuality<TraceMesh>::MaxSumOfGaussianCurvature() = maxV;
         }
         if (patch_quality_mode == GAUSSIMAGETHINNESS) {
@@ -123,7 +128,7 @@ void callback() {
         ImGui::TreePop();
     }
     if(ImGui::TreeNode("Developable Approximation Method")) {
-        static int approximation_mode = 0;
+        static int approximation_mode = 1;
         enum {
             MITANI,
             QSLIM,
@@ -143,6 +148,15 @@ void callback() {
         ImGui::TreePop();
     }
 
+    bool trace_only_loop = !nebutaManager.allow_trace_loopish;
+    if(ImGui::Checkbox("Trace only loop", &trace_only_loop)) {
+        nebutaManager.allow_trace_loopish = !trace_only_loop;
+    }
+
+    ImGui::Checkbox("Split on removal", &nebutaManager.split_on_removal);
+    float sample_ratio_slider = 0.1f;
+    ImGui::SliderFloat("Sample ratio", &sample_ratio_slider, 0.0f, 1.0f);
+    nebutaManager.sample_ratio = sample_ratio_slider;
 }
 
 int main(int argc, char **argv) {
