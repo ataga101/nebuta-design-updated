@@ -92,7 +92,7 @@ add_executable(
         nebuta-designer
         src/decimate.cpp
         src/developablize.cpp
-        src/main.cpp src/developablize_quadric.cpp src/approximate_single_patch.h src/svg_writer.h src/flatten_triangle_strip.h)
+        src/main.cpp src/developablize_quadric.cpp src/approximate_single_patch.h src/svg_writer.h src/flatten_triangle_strip.h src/flatten_triangle_strip.cpp src/svg_writer.cpp src/svg_writer.cpp)
 
 # Include settings
 target_include_directories(nebuta-designer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libigl/include")

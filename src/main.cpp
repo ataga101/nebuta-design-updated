@@ -55,7 +55,8 @@ void callback() {
         ORIGINAL,
         REMESHED,
         PARTITIONED,
-        APPROXIMATED
+        APPROXIMATED,
+        FLATTENED
     };
     if (ImGui::RadioButton("Original", &display_mesh_mode, ORIGINAL)) {
         nebutaManager.set_visualization_mode(NebutaManager::ORIGINAL);
@@ -75,6 +76,13 @@ void callback() {
     if (ImGui::RadioButton("Approximated", &display_mesh_mode, APPROXIMATED)) {
         nebutaManager.set_visualization_mode(NebutaManager::APPROXIMATED);
         nebutaManager.update_visualization();
+    }
+    if (ImGui::RadioButton("Flattened", &display_mesh_mode, FLATTENED)) {
+        nebutaManager.set_visualization_mode(NebutaManager::FLATTENED);
+        nebutaManager.update_visualization();
+    }
+    if (display_mesh_mode == FLATTENED) {
+        ImGui::InputInt("Patch ID", &nebutaManager.fabrication_mode_patch_id);
     }
 
     if(ImGui::TreeNode("Patch Quality Measures")) {

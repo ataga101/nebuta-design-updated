@@ -35,7 +35,7 @@ using FieldSmootherType = vcg::tri::FieldSmoother<FieldTriMesh>;
 
 class NebutaManager {
 public:
-    enum display_mode {ORIGINAL, REMESHED, PARTITIONED, APPROXIMATED};
+    enum display_mode {ORIGINAL, REMESHED, PARTITIONED, APPROXIMATED, FLATTENED};
 private:
     FieldTriMesh originalVCGMesh;
 
@@ -51,6 +51,8 @@ private:
     polyscope::SurfaceMesh* polyscopeRemeshedMesh = nullptr;
     polyscope::SurfaceMesh* polyscopePartitionedMesh = nullptr;
     polyscope::SurfaceMesh* polyscopeApproximatedMesh = nullptr;
+    polyscope::SurfaceMesh* polyscopeFlattenedMesh = nullptr;
+    polyscope::SurfaceMesh* polyscopePatchMesh = nullptr;
 
     display_mode current_mode = ORIGINAL;
     ParamMode quality_measure = PMHausdorff;
@@ -88,8 +90,11 @@ public:
     bool force_split = false;
     bool allow_trace_loopish = false;
 
+    int fabrication_mode_patch_id;
+
     std::vector<Eigen::MatrixXd> flattenedVs;
     std::vector<Eigen::MatrixXi> flattenedFs;
+    std::vector<Eigen::MatrixXd> approximatedVs;
 
     NebutaManager();
     ~NebutaManager();
@@ -99,6 +104,8 @@ public:
     void prepare_tracing();
     void patch_tracing();
     void developable_approximation();
+
+    int get_num_patches();
 
     void set_visualization_mode(display_mode mode);
     void set_patch_quality_mode(ParamMode mode);
@@ -269,6 +276,7 @@ void NebutaManager::developable_approximation() {
 
     flattenedVs.clear();
     flattenedFs.clear();
+    approximatedVs.clear();
 
     for(auto i=0; i<PTr->Partitions.size(); i++){
         TraceMesh patchMesh;
@@ -279,22 +287,23 @@ void NebutaManager::developable_approximation() {
 
         approximate_single_patch::approximate_single_patch(patchV, patchF, resultPatchV, resultPatchF);
 
+        approximatedVs.push_back(resultPatchV);
+
         // Flatten the mesh
         Eigen::MatrixXd flattenedPatchV;
 
         Eigen::VectorXi bnd;
         igl::boundary_loop(resultPatchF, bnd);
 
-        flatten_triangle_strip(resultPatchV, resultPatchF, Eigen::Vector3d::Zero(), flattenedPatchV);
+        Eigen::MatrixXd scaledV = resultPatchV * height_in_cm;
+        flatten_triangle_strip(scaledV, resultPatchF, Eigen::Vector3d::Zero(), flattenedPatchV);
 
-        double flatten_scale = (resultPatchV.row(bnd(0)) - resultPatchV.row(bnd(1))).norm() / (flattenedPatchV.row(bnd(0)) - flattenedPatchV.row(bnd(1))).norm();
-        flattenedPatchV *= height_in_cm * flatten_scale;
+        auto min_x = flattenedPatchV.col(0).minCoeff();
+        auto min_y = flattenedPatchV.col(1).minCoeff();
 
-        // remove offset from uv
-        auto offset_vec = flattenedPatchV.colwise().minCoeff();
-
-        for (int i = 0; i < flattenedPatchV.rows(); i++){
-            flattenedPatchV.row(i) -= offset_vec;
+        for (int i=0; i<flattenedPatchV.rows(); i++) {
+            flattenedPatchV(i, 0) -= min_x;
+            flattenedPatchV(i, 1) -= min_y;
         }
 
         flattenedVs.push_back(flattenedPatchV);
@@ -318,6 +327,7 @@ void NebutaManager::developable_approximation() {
     showWires_approximated->setEnabled(true);
     showWires_approximated->setColor({0.0, 0.0, 0.0});
 
+    approximated = true;
     current_mode = APPROXIMATED;
 }
 
@@ -366,24 +376,58 @@ void NebutaManager::update_visualization() {
             if (polyscopeRemeshedMesh != nullptr) polyscopeRemeshedMesh->setEnabled(false);
             if (polyscopePartitionedMesh != nullptr) polyscopePartitionedMesh->setEnabled(false);
             if (polyscopeApproximatedMesh != nullptr) polyscopeApproximatedMesh->setEnabled(false);
+            if (polyscopeFlattenedMesh != nullptr) polyscopeFlattenedMesh->setEnabled(false);
+            if (polyscopePatchMesh != nullptr) polyscopePatchMesh->setEnabled(false);
             break;
         case REMESHED:
             if (polyscopeOriginalMesh != nullptr) polyscopeOriginalMesh->setEnabled(false);
             if (polyscopeRemeshedMesh != nullptr) polyscopeRemeshedMesh->setEnabled(true);
             if (polyscopePartitionedMesh != nullptr) polyscopePartitionedMesh->setEnabled(false);
             if (polyscopeApproximatedMesh != nullptr) polyscopeApproximatedMesh->setEnabled(false);
+            if (polyscopeFlattenedMesh != nullptr) polyscopeFlattenedMesh->setEnabled(false);
+            if (polyscopePatchMesh != nullptr) polyscopePatchMesh->setEnabled(false);
             break;
         case PARTITIONED:
             if (polyscopeOriginalMesh != nullptr) polyscopeOriginalMesh->setEnabled(false);
             if (polyscopeRemeshedMesh != nullptr) polyscopeRemeshedMesh->setEnabled(false);
             if (polyscopePartitionedMesh != nullptr) polyscopePartitionedMesh->setEnabled(true);
             if (polyscopeApproximatedMesh != nullptr) polyscopeApproximatedMesh->setEnabled(false);
+            if (polyscopeFlattenedMesh != nullptr) polyscopeFlattenedMesh->setEnabled(false);
+            if (polyscopePatchMesh != nullptr) polyscopePatchMesh->setEnabled(false);
             break;
         case APPROXIMATED:
             if (polyscopeOriginalMesh != nullptr) polyscopeOriginalMesh->setEnabled(false);
             if (polyscopeRemeshedMesh != nullptr) polyscopeRemeshedMesh->setEnabled(false);
             if (polyscopePartitionedMesh != nullptr) polyscopePartitionedMesh->setEnabled(false);
-            if (polyscopeApproximatedMesh != nullptr) polyscopeApproximatedMesh->setEnabled(true);
+            if (polyscopeApproximatedMesh != nullptr) {
+                polyscopeApproximatedMesh->setEnabled(true);
+                polyscopeApproximatedMesh->setTransparency(1);
+            }
+            if (polyscopeFlattenedMesh != nullptr) polyscopeFlattenedMesh->setEnabled(false);
+            if (polyscopePatchMesh != nullptr) polyscopePatchMesh->setEnabled(false);
+            break;
+
+        case FLATTENED:
+            if (polyscopeOriginalMesh != nullptr) polyscopeOriginalMesh->setEnabled(false);
+            if (polyscopeRemeshedMesh != nullptr) polyscopeRemeshedMesh->setEnabled(false);
+            if (polyscopePartitionedMesh != nullptr) polyscopePartitionedMesh->setEnabled(false);
+            if (polyscopeApproximatedMesh != nullptr)
+                polyscopeApproximatedMesh->setEnabled(false);
+
+
+            Eigen::MatrixXd flattenedV_display(flattenedVs[fabrication_mode_patch_id].rows(), 3);
+            for(int i=0; i<flattenedV_display.rows(); i++){
+                flattenedV_display(i, 0) = flattenedVs[fabrication_mode_patch_id](i, 0) / height_in_cm + 30;
+                flattenedV_display(i, 2) = flattenedVs[fabrication_mode_patch_id](i, 1) / height_in_cm + 30;
+                flattenedV_display(i, 1) = 0;
+            }
+            assert(flattenedV_display.rows() == flattenedFs[fabrication_mode_patch_id].maxCoeff() + 1);
+            polyscopeFlattenedMesh = polyscope::registerSurfaceMesh("Flattened Mesh", flattenedV_display, flattenedFs[fabrication_mode_patch_id]);
+            polyscopeFlattenedMesh->setEdgeWidth(1.);
+            polyscopeFlattenedMesh->setEnabled(true);
+            polyscopePatchMesh = polyscope::registerSurfaceMesh("Patch Mesh", approximatedVs[fabrication_mode_patch_id], flattenedFs[fabrication_mode_patch_id]);
+            polyscopePatchMesh->setEdgeWidth(1.);
+            polyscopePatchMesh->setEnabled(true);
             break;
     }
 }
@@ -415,7 +459,15 @@ void NebutaManager::save_wire_indices() {
     ofs.close();
 }
 
+int NebutaManager::get_num_patches(){
+    return flattenedVs.size();
+}
+
 void NebutaManager::save_2d_pattern() {
+    if(!approximated){
+        developable_approximation();
+    }
+
     int svg_fileid = 1;
     std::string svg_path = pathM + "_2d_pattern_1.svg";
 
@@ -425,8 +477,10 @@ void NebutaManager::save_2d_pattern() {
         bool needs_new_svg = !now_svg->add_patch(flattenedVs[i], flattenedFs[i], i);
         if(needs_new_svg){
             delete now_svg;
+            svg_fileid++;
             svg_path = pathM + "_2d_pattern_" + std::to_string(svg_fileid) + ".svg";
             now_svg = new svg_writer(svg_path, 21.0, 29.7);
+            std::cerr << "New patch created" << std::endl;
             if(!now_svg->add_patch(flattenedVs[i], flattenedFs[i], i)){
                 std::cerr << "Error when writing svg" << std::endl;
                 delete now_svg;
@@ -434,6 +488,8 @@ void NebutaManager::save_2d_pattern() {
             }
         }
     }
+    now_svg->finish();
+    delete now_svg;
 }
 
 #endif //LIBIGL_POLYSCOPE_EXAMPLE_PROJECT_NEBUTAMANAGER_H
