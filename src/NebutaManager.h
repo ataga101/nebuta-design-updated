@@ -7,35 +7,36 @@
 
 #include <Eigen/Core>
 #include <string>
-#include "mesh_manager.h"
-#include "svg_writer.h"
-#include "flatten_triangle_strip.h"
 #include "fields/field_smoother.h"
+#include "mesh_field_smoother.h"
+#include "mesh_quality.h"
 #include "triangle_mesh_type.h"
 #include "poly_mesh_type.h"
 #include "AutoRemesher.h"
-#include "mesh_field_smoother.h"
 #include "tracing/mesh_type.h"
 #include "tracing/patch_tracer.h"
-#include "mesh_quality.h"
-#include "igl/read_triangle_mesh.h"
-#include "igl/harmonic.h"
-#include "igl/map_vertices_to_circle.h"
-#include "vcg/complex/algorithms/create/platonic.h"
-#include "cstdio"
 #include "tracing/tracer_interface.h"
-#include "approximate_single_patch.h"
-#include "developableflow/timestep.h"
 
 #include "polyscope/polyscope.h"
 #include "polyscope/surface_mesh.h"
+
+#include "mesh_manager.h"
+#include "svg_writer.h"
+#include "flatten_triangle_strip.h"
+
+#include "igl/read_triangle_mesh.h"
+#include "igl/remove_duplicate_vertices.h"
+
+#include "vcg/complex/algorithms/create/platonic.h"
+#include "cstdio"
+#include "approximate_single_patch.h"
 
 using TracerType = PatchTracer<TraceMesh, MeshQuality<TraceMesh>>;
 using FieldSmootherType = vcg::tri::FieldSmoother<FieldTriMesh>;
 
 class NebutaManager {
 public:
-    enum display_mode {ORIGINAL, REMESHED, PARTITIONED, APPROXIMATED, FLATTENED};
+    enum display_mode {ORIGINAL, REMESHED, PARTITIONED, APPROXIMATED, FABRICATIONMODE};
 private:
     FieldTriMesh originalVCGMesh;
 
@@ -66,6 +67,10 @@ private:
     std::vector<std::array<size_t, 2>> edgeInds;
 
     void set_parameters();
+    
+    // patch_idx to face_idx mapping (used for coloring)
+    std::vector<int> patch_to_max_vert_idx;
+    std::vector<int> patch_to_max_face_idx;
 
 public:
     Eigen::MatrixXd originalV;
@@ -108,9 +113,11 @@ public:
     int get_num_patches();
 
     void set_visualization_mode(display_mode mode);
+    void color_selected_patch(Eigen::MatrixXd &per_face_color, int patch_idx);
     void set_patch_quality_mode(ParamMode mode);
     void update_visualization();
 
+    void save_approximated_mesh();
     void save_wire_indices();
     void save_2d_pattern();
 };
@@ -118,6 +125,7 @@ public:
 //
 // Created by Naoki Agata on 2023/02/23.
 //
+
 
 NebutaManager::NebutaManager()
         : VGraph(nullptr), PTr(nullptr)
@@ -272,13 +280,31 @@ void NebutaManager::developable_approximation() {
         patch_tracing();
     }
 
-    TraceMesh approximatedMesh;
-
     flattenedVs.clear();
     flattenedFs.clear();
     approximatedVs.clear();
 
-    for(auto i=0; i<PTr->Partitions.size(); i++){
+    Eigen::MatrixXd N, dblA;
+    igl::per_face_normals(partitionedV, partitionedF, N);
+    igl::doublearea(partitionedV, partitionedF, dblA);
+
+    patch_to_max_vert_idx.clear();
+    patch_to_max_vert_idx.resize(PTr->Partitions.size(), 0);
+    patch_to_max_face_idx.clear();
+    patch_to_max_face_idx.resize(PTr->Partitions.size(), 0);
+
+    int approximatedV_size = 0;
+    int approximatedF_size = 0;
+
+    for(auto i=0; i<PTr->Partitions.size(); i++) {
+        // Get the patch mesh's normal
+        Eigen::Vector3d avg_patch_normal = Eigen::Vector3d::Zero();
+        for (int j = 0; j < PTr->Partitions[i].size(); j++) {
+            avg_patch_normal += N.row(PTr->Partitions[i][j]) * dblA(PTr->Partitions[i][j]);
+        }
+        avg_patch_normal.normalize();
+
+        // Get the patch mesh
         TraceMesh patchMesh;
         PTr->GetPatchMesh(i, patchMesh, false);
         Eigen::MatrixXd patchV, resultPatchV;
@@ -296,28 +322,49 @@ void NebutaManager::developable_approximation() {
         igl::boundary_loop(resultPatchF, bnd);
 
         Eigen::MatrixXd scaledV = resultPatchV * height_in_cm;
-        flatten_triangle_strip(scaledV, resultPatchF, Eigen::Vector3d::Zero(), flattenedPatchV);
+        flatten_triangle_strip(scaledV, resultPatchF, -avg_patch_normal, flattenedPatchV);
 
         auto min_x = flattenedPatchV.col(0).minCoeff();
         auto min_y = flattenedPatchV.col(1).minCoeff();
 
-        for (int i=0; i<flattenedPatchV.rows(); i++) {
-            flattenedPatchV(i, 0) -= min_x;
-            flattenedPatchV(i, 1) -= min_y;
+        for (int j = 0; j < flattenedPatchV.rows(); j++) {
+            flattenedPatchV(j, 0) -= min_x;
+            flattenedPatchV(j, 1) -= min_y;
         }
 
         flattenedVs.push_back(flattenedPatchV);
         flattenedFs.push_back(resultPatchF);
 
-        // Update vcg mesh
-        ConvertToVCGMesh(patchMesh, resultPatchV, resultPatchF);
-        patchMesh.UpdateAttributes();
+        approximatedV_size += resultPatchV.rows();
+        approximatedF_size += resultPatchF.rows();
 
-        vcg::tri::Append<TraceMesh,TraceMesh>::MeshAppendConst(approximatedMesh, patchMesh);
+        patch_to_max_vert_idx[i] = approximatedV_size;
+        patch_to_max_face_idx[i] = approximatedF_size;
     }
 
-    // Store approximated mesh in igl format
-    vcg::tri::MeshToMatrix<TraceMesh>::GetTriMeshData(approximatedMesh, approximatedF, approximatedV);
+    // Concatenate all the approximated meshes
+    approximatedV.resize(approximatedV_size, 3);
+    approximatedF.resize(approximatedF_size, 3);
+
+    int approximatedV_idx = 0;
+    for(int i=0; i<approximatedVs.size(); i++){
+        for(int j=0; j<approximatedVs[i].rows(); j++){
+            approximatedV.row(approximatedV_idx) = approximatedVs[i].row(j);
+            approximatedV_idx++;
+        }
+    }
+
+    int approximatedF_idx = 0;
+    for(int i=0; i<flattenedFs.size(); i++){
+        for(int j=0; j<flattenedFs[i].rows(); j++){
+            for(int k=0; k<3; k++){
+                approximatedF(approximatedF_idx, k) = (i == 0) ? flattenedFs[i](j, k) : flattenedFs[i](j, k) + patch_to_max_vert_idx[i-1];
+            }
+            approximatedF_idx++;
+        }
+    }
+
+    // Register to polyscope
     polyscopeApproximatedMesh = polyscope::registerSurfaceMesh("Approximated Mesh", approximatedV, approximatedF);
     polyscopeApproximatedMesh->setEdgeWidth(1.);
     polyscopeApproximatedMesh->setSurfaceColor({0.9, 0.9, 0.9});
@@ -327,8 +374,25 @@ void NebutaManager::developable_approximation() {
     showWires_approximated->setEnabled(true);
     showWires_approximated->setColor({0.0, 0.0, 0.0});
 
+
     approximated = true;
+    // Save Mesh
+    save_approximated_mesh();
     current_mode = APPROXIMATED;
+}
+
+void NebutaManager::save_approximated_mesh(){
+    if(!approximated){
+        developable_approximation();
+    }
+
+    Eigen::MatrixXd approximatedV_sanitized;
+    Eigen::MatrixXi approximatedF_sanitized;
+    Eigen::VectorXi SVI, SVJ;
+    igl::remove_duplicate_vertices(approximatedV, approximatedF, 0.0001, approximatedV_sanitized, SVI, SVJ, approximatedF_sanitized);
+
+    std::string filename = pathM + "approximated_mesh.obj";
+    igl::writeOBJ(filename, approximatedV_sanitized, approximatedF_sanitized);
 }
 
 void NebutaManager::prepare_tracing() {
@@ -369,6 +433,21 @@ void NebutaManager::init_structures() {
     PTr->InitTracer(Drift,false);
 }
 
+void NebutaManager::color_selected_patch(Eigen::MatrixXd &per_face_color, int patch_idx) {
+    per_face_color = Eigen::MatrixXd::Zero(approximatedF.rows(), 3);
+
+    for (int i=0; i<approximatedF.rows(); i++) {
+        int max_limit = patch_to_max_face_idx[patch_idx];
+        int min_limit = (patch_idx <= 0) ? 0 : patch_to_max_face_idx[patch_idx-1];
+        if (i >= min_limit && i < max_limit) {
+            per_face_color.row(i) = Eigen::RowVector3d(0.9, 0., 0.);
+        }
+        else {
+            per_face_color.row(i) = Eigen::RowVector3d(0.9, 0.9, 0.9);
+        }
+    }
+}
+
 void NebutaManager::update_visualization() {
     switch (current_mode) {
         case ORIGINAL:
@@ -401,20 +480,23 @@ void NebutaManager::update_visualization() {
             if (polyscopePartitionedMesh != nullptr) polyscopePartitionedMesh->setEnabled(false);
             if (polyscopeApproximatedMesh != nullptr) {
                 polyscopeApproximatedMesh->setEnabled(true);
-                polyscopeApproximatedMesh->setTransparency(1);
             }
             if (polyscopeFlattenedMesh != nullptr) polyscopeFlattenedMesh->setEnabled(false);
             if (polyscopePatchMesh != nullptr) polyscopePatchMesh->setEnabled(false);
             break;
 
-        case FLATTENED:
+        case FABRICATIONMODE:
             if (polyscopeOriginalMesh != nullptr) polyscopeOriginalMesh->setEnabled(false);
             if (polyscopeRemeshedMesh != nullptr) polyscopeRemeshedMesh->setEnabled(false);
             if (polyscopePartitionedMesh != nullptr) polyscopePartitionedMesh->setEnabled(false);
-            if (polyscopeApproximatedMesh != nullptr)
-                polyscopeApproximatedMesh->setEnabled(false);
+            if (polyscopeApproximatedMesh != nullptr) {
+                polyscopeApproximatedMesh->setEnabled(true);
+                Eigen::MatrixXd per_face_color;
+                color_selected_patch(per_face_color, fabrication_mode_patch_id);
+                polyscopeApproximatedMesh->addFaceColorQuantity("patch coloring", per_face_color);
+            }
 
-
+            /* Show flattened mesh
             Eigen::MatrixXd flattenedV_display(flattenedVs[fabrication_mode_patch_id].rows(), 3);
             for(int i=0; i<flattenedV_display.rows(); i++){
                 flattenedV_display(i, 0) = flattenedVs[fabrication_mode_patch_id](i, 0) / height_in_cm + 30;
@@ -427,7 +509,7 @@ void NebutaManager::update_visualization() {
             polyscopeFlattenedMesh->setEnabled(true);
             polyscopePatchMesh = polyscope::registerSurfaceMesh("Patch Mesh", approximatedVs[fabrication_mode_patch_id], flattenedFs[fabrication_mode_patch_id]);
             polyscopePatchMesh->setEdgeWidth(1.);
-            polyscopePatchMesh->setEnabled(true);
+            polyscopePatchMesh->setEnabled(true);*/
             break;
     }
 }
@@ -491,5 +573,6 @@ void NebutaManager::save_2d_pattern() {
     now_svg->finish();
     delete now_svg;
 }
+
 
 #endif //LIBIGL_POLYSCOPE_EXAMPLE_PROJECT_NEBUTAMANAGER_H

@@ -22,6 +22,8 @@
 #include "approximate_single_patch.h"
 #include <igl/hausdorff.h>
 
+#include "tracing/mesh_type.h"
+
 enum ParamMode{PMConformal,PMArap,PMGaussianCurvature,PMGaussImageThinness, PMHausdorff};
 
 template <class MeshType>

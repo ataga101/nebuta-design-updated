@@ -9,7 +9,6 @@
 #include "json/json.hpp"
 
 #include "NebutaManager.h"
-#include "approximate_single_patch.h"
 
 // The mesh, Eigen representation
 Eigen::MatrixXd meshV;
@@ -77,12 +76,14 @@ void callback() {
         nebutaManager.set_visualization_mode(NebutaManager::APPROXIMATED);
         nebutaManager.update_visualization();
     }
-    if (ImGui::RadioButton("Flattened", &display_mesh_mode, FLATTENED)) {
-        nebutaManager.set_visualization_mode(NebutaManager::FLATTENED);
+    if (ImGui::RadioButton("Fabrication Mode", &display_mesh_mode, FLATTENED)) {
+        nebutaManager.set_visualization_mode(NebutaManager::FABRICATIONMODE);
         nebutaManager.update_visualization();
     }
     if (display_mesh_mode == FLATTENED) {
-        ImGui::InputInt("Patch ID", &nebutaManager.fabrication_mode_patch_id);
+        if(ImGui::InputInt("Patch ID", &nebutaManager.fabrication_mode_patch_id)){
+            nebutaManager.update_visualization();
+        };
     }
 
     if(ImGui::TreeNode("Patch Quality Measures")) {
@@ -162,7 +163,7 @@ void callback() {
     }
 
     ImGui::Checkbox("Split on removal", &nebutaManager.split_on_removal);
-    float sample_ratio_slider = 0.1f;
+    float sample_ratio_slider = nebutaManager.sample_ratio;
     ImGui::SliderFloat("Sample ratio", &sample_ratio_slider, 0.0f, 1.0f);
     nebutaManager.sample_ratio = sample_ratio_slider;
 }
