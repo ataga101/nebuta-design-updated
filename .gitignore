@@ -1,7 +1,5 @@
 # Build directories
-cmake-build-debug/
-cmake-build-default/
-cmake-build-release/
+cmake-build-*
 
 # Editor and OS things
 imgui.ini

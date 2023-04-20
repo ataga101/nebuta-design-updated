@@ -31,6 +31,8 @@
 #include "cstdio"
 #include "approximate_single_patch.h"
 
+#include "igl/hausdorff.h"
+
 using TracerType = PatchTracer<TraceMesh, MeshQuality<TraceMesh>>;
 using FieldSmootherType = vcg::tri::FieldSmoother<FieldTriMesh>;
 
@@ -85,7 +87,7 @@ public:
     double Drift = 100;
     double sample_ratio = 1;
     double height_in_cm = 15;
-    bool split_on_removal = false;
+    bool split_on_removal = true;
     bool CClarkability = false;
     bool match_valence = false;
     bool check_quality_functor = true;
@@ -93,7 +95,7 @@ public:
     bool final_removal = true;
     bool meta_mesh_collapse = false;
     bool force_split = false;
-    bool allow_trace_loopish = false;
+    bool allow_trace_loopish = true;
 
     int fabrication_mode_patch_id;
 
@@ -110,16 +112,25 @@ public:
     void patch_tracing();
     void developable_approximation();
 
-    int get_num_patches();
+    double get_wire_length();
+    int get_wire_cnt();
+    double get_hausdorff_distance();
+    int get_patch_cnt();
+    int get_patch_quality_mode();
 
     void set_visualization_mode(display_mode mode);
     void color_selected_patch(Eigen::MatrixXd &per_face_color, int patch_idx);
     void set_patch_quality_mode(ParamMode mode);
+    void set_threshold(ParamMode mode, double th);
     void update_visualization();
 
     void save_approximated_mesh();
     void save_wire_indices();
+    void save_wire_positions();
     void save_2d_pattern();
+
+    void binary_search_param(ParamMode mode, double target_patch_cnt);
+    void do_test();
 };
 
 //
@@ -135,9 +146,133 @@ NebutaManager::NebutaManager()
 
 NebutaManager::~NebutaManager() {
     save_wire_indices();
+    save_wire_positions();
     if(VGraph != nullptr) delete VGraph;
     if(PTr != nullptr) delete PTr;
     std::remove((pathM + "_field.rosy").c_str());
+}
+
+void NebutaManager::set_threshold(ParamMode mode, double th){
+    if(mode == PMArap){
+        MeshQuality<TraceMesh>::MinQ() = -th;
+        MeshQuality<TraceMesh>::MaxQ() = th;
+    }else if(mode == PMGaussImageThinness){
+        MeshQuality<TraceMesh>::MaxGaussImageThickness() = th;
+    }else if(mode == PMGaussianCurvature){
+        MeshQuality<TraceMesh>::MaxSumOfGaussianCurvature() = th;
+    }else{
+        MeshQuality<TraceMesh>::MaxHausdorff() = th;
+    }
+}
+
+void NebutaManager::binary_search_param(ParamMode mode, double hausdorff_distance){
+    double max_th;
+    double min_th = 0;
+    if(mode == PMArap){
+        max_th = 0.2;
+    }else if(mode == PMGaussImageThinness){
+        max_th = 0.002;
+    }else if(mode == PMGaussianCurvature){
+        max_th = 4;
+    }else if(mode == PMHausdorff){
+        max_th = 0.1;
+    }else{
+        std::cerr << "Not Implemented" << std::endl;
+        return;
+    }
+
+    double mid;
+    int max_trial_times = 20;
+    do{
+        std::cerr << "Binary Search: " << max_trial_times << " times left" << std::endl;
+        mid = (max_th + min_th) / 2;
+        prepare_tracing();
+        set_threshold(mode, mid);
+        set_patch_quality_mode(mode);
+        patch_tracing();
+        developable_approximation();
+        if(get_hausdorff_distance() < hausdorff_distance){
+            min_th = mid;
+        }
+        else{
+            max_th = mid;
+        }
+        max_trial_times--;
+    }while(std::abs(get_patch_cnt() - hausdorff_distance) > 10e-3 && max_trial_times > 0);
+
+}
+
+void NebutaManager::do_test() {
+    std::ofstream ofs(pathM + "_test_res.txt");
+
+    /*
+    ofs << "Gauss Image Thinness: " << std::endl;
+    std::cerr << "Testing Gauss Image Thinness" << std::endl;
+    set_patch_quality_mode(PMGaussImageThinness);
+    prepare_tracing();
+    patch_tracing();
+    developable_approximation();
+    ofs << "patch_cnt: " << get_patch_cnt() << std::endl;
+    ofs << "wire_cnt: " << get_wire_cnt() << std::endl;
+    ofs << "wire_length: " << get_wire_length() << std::endl;
+    ofs << "hausdorff_distance: " << get_hausdorff_distance() << std::endl;
+    ofs << "Threshold: " << MeshQuality<TraceMesh>::MaxGaussImageThickness() << std::endl;
+
+    ofs << "Gaussian Curvature: " << std::endl;
+    std::cerr << "Testing Gaussian Curvature" << std::endl;
+    binary_search_param(PMGaussianCurvature, get_patch_cnt());
+    ofs << "patch_cnt: " << get_patch_cnt() << std::endl;
+    ofs << "wire_cnt: " << get_wire_cnt() << std::endl;
+    ofs << "wire_length: " << get_wire_length() << std::endl;
+    ofs << "hausdorff_distance: " << get_hausdorff_distance() << std::endl;
+    ofs << "Threshold: " << MeshQuality<TraceMesh>::MaxSumOfGaussianCurvature() << std::endl;
+    */
+
+    double hd_target = 0.025;
+
+    approximate_single_patch::approx_mode = approximate_single_patch::QSlim;
+    ofs << "Hausdorff: " << std::endl;
+    std::cerr << "Testing Hausdorff" << std::endl;
+    binary_search_param(PMHausdorff, hd_target);
+    ofs << "patch_cnt: " << get_patch_cnt() << std::endl;
+    ofs << "wire_cnt: " << get_wire_cnt() << std::endl;
+    ofs << "wire_length: " << get_wire_length() << std::endl;
+    ofs << "hausdorff_distance: " << get_hausdorff_distance() << std::endl;
+    ofs << "Threshold: " << MeshQuality<TraceMesh>::MaxHausdorff() << std::endl;
+
+    approximate_single_patch::approx_mode = approximate_single_patch::DP_perface_distance;
+    ofs << "Hausdorff (DP): " << std::endl;
+    std::cerr << "Testing Hausdorff (DP)" << std::endl;
+    binary_search_param(PMHausdorff, hd_target);
+    ofs << "patch_cnt: " << get_patch_cnt() << std::endl;
+    ofs << "wire_cnt: " << get_wire_cnt() << std::endl;
+    ofs << "wire_length: " << get_wire_length() << std::endl;
+    ofs << "hausdorff_distance: " << get_hausdorff_distance() << std::endl;
+    ofs << "Threshold: " << MeshQuality<TraceMesh>::MaxHausdorff() << std::endl;
+
+    approximate_single_patch::approx_mode = approximate_single_patch::QSlim;
+    ofs << "Arap: " << std::endl;
+    std::cerr << "Testing Arap" << std::endl;
+    binary_search_param(PMArap, hd_target);
+    ofs << "patch_cnt: " << get_patch_cnt() << std::endl;
+    ofs << "wire_cnt: " << get_wire_cnt() << std::endl;
+    ofs << "wire_length: " << get_wire_length() << std::endl;
+    ofs << "hausdorff_distance: " << get_hausdorff_distance() << std::endl;
+    ofs << "Threshold: " << MeshQuality<TraceMesh>::MaxQ() << std::endl;
+
+    approximate_single_patch::approx_mode = approximate_single_patch::DP_perface_distance;
+    ofs << "Arap (DP): " << std::endl;
+    std::cerr << "Testing Arap (DP)" << std::endl;
+    binary_search_param(PMArap, hd_target);
+    ofs << "patch_cnt: " << get_patch_cnt() << std::endl;
+    ofs << "wire_cnt: " << get_wire_cnt() << std::endl;
+    ofs << "wire_length: " << get_wire_length() << std::endl;
+    ofs << "hausdorff_distance: " << get_hausdorff_distance() << std::endl;
+    ofs << "Threshold: " << MeshQuality<TraceMesh>::MaxQ() << std::endl;
+
+    ofs.close();
+
+    std::cerr << "Test Done" << std::endl;
 }
 
 void NebutaManager::set_visualization_mode(display_mode mode) {
@@ -228,6 +363,10 @@ void NebutaManager::set_parameters() {
 }
 
 void NebutaManager::patch_tracing() {
+    if(!remeshed){
+        remesh_and_field_computation();
+    }
+
     // Set parameters
     set_parameters();
 
@@ -386,13 +525,8 @@ void NebutaManager::save_approximated_mesh(){
         developable_approximation();
     }
 
-    Eigen::MatrixXd approximatedV_sanitized;
-    Eigen::MatrixXi approximatedF_sanitized;
-    Eigen::VectorXi SVI, SVJ;
-    igl::remove_duplicate_vertices(approximatedV, approximatedF, 0.0001, approximatedV_sanitized, SVI, SVJ, approximatedF_sanitized);
-
     std::string filename = pathM + "approximated_mesh.obj";
-    igl::writeOBJ(filename, approximatedV_sanitized, approximatedF_sanitized);
+    igl::writeOBJ(filename, approximatedV, approximatedF);
 }
 
 void NebutaManager::prepare_tracing() {
@@ -493,7 +627,8 @@ void NebutaManager::update_visualization() {
                 polyscopeApproximatedMesh->setEnabled(true);
                 Eigen::MatrixXd per_face_color;
                 color_selected_patch(per_face_color, fabrication_mode_patch_id);
-                polyscopeApproximatedMesh->addFaceColorQuantity("patch coloring", per_face_color);
+                auto colq = polyscopeApproximatedMesh->addFaceColorQuantity("patch coloring", per_face_color);
+                colq->setEnabled(true);
             }
 
             /* Show flattened mesh
@@ -541,8 +676,28 @@ void NebutaManager::save_wire_indices() {
     ofs.close();
 }
 
-int NebutaManager::get_num_patches(){
-    return flattenedVs.size();
+void NebutaManager::save_wire_positions() {
+    std::vector<std::vector<size_t>> CurrV;
+    std::vector<std::vector<size_t>> _CurrDir;
+    std::vector<bool> IsLoop;
+
+    PTr->GetCurrVertDir(CurrV, _CurrDir, IsLoop);
+
+    std::ofstream fw(pathM + "_wire_positions.txt");
+    for(int i=0; i<CurrV.size(); i++){
+        fw << "|";
+        if(IsLoop[i]){
+            fw << "L|\n";
+        }else{
+            fw << "P|\n";
+        }
+        for(int j=0; j<CurrV[i].size(); j++){
+            size_t vi = CurrV[i][j];
+            fw << partitionedV(vi, 0) << " " << partitionedV(vi, 1) << " " << partitionedV(vi, 2) << "\n";
+        }
+        fw << std::flush;
+    }
+    fw.close();
 }
 
 void NebutaManager::save_2d_pattern() {
@@ -574,5 +729,58 @@ void NebutaManager::save_2d_pattern() {
     delete now_svg;
 }
 
+
+double NebutaManager::get_wire_length() {
+    if(!partitioned){
+        return 0;
+    }
+    double wire_length = 0;
+
+    std::vector<std::vector<size_t>> CurrV;
+    std::vector<std::vector<size_t>> _CurrDir;
+    std::vector<bool> IsLoop;
+
+    PTr->GetCurrVertDir(CurrV, _CurrDir, IsLoop);
+
+    for (auto i = 0; i < CurrV.size(); i++) {
+        int limit = (IsLoop[i]) ? CurrV[i].size() : CurrV[i].size() - 1;
+        for (auto j = 0; j < limit; j++) {
+            wire_length += (partitionedV.row(CurrV[i][j]) - partitionedV.row(CurrV[i][(j + 1) % CurrV[i].size()])).norm();
+        }
+    }
+
+    return wire_length;
+}
+int NebutaManager::get_patch_cnt() {
+    if (!partitioned) {
+        return 0;
+    }
+    return PTr->Partitions.size();
+}
+int NebutaManager::get_wire_cnt() {
+    if (!partitioned) {
+        return 0;
+    }
+
+    std::vector<std::vector<size_t>> CurrV;
+    std::vector<std::vector<size_t>> _CurrDir;
+    std::vector<bool> IsLoop;
+
+    PTr->GetCurrVertDir(CurrV, _CurrDir, IsLoop);
+
+    return CurrV.size();
+}
+double NebutaManager::get_hausdorff_distance(){
+    if(!approximated){
+        return -1;
+    }
+    double hd;
+    igl::hausdorff(approximatedV, approximatedF, originalV, originalF, hd);
+    return hd;
+}
+
+int NebutaManager::get_patch_quality_mode() {
+    return (int)quality_measure;
+}
 
 #endif //LIBIGL_POLYSCOPE_EXAMPLE_PROJECT_NEBUTAMANAGER_H

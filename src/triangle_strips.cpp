@@ -40,26 +40,33 @@ namespace tri_strip{
                              Eigen::MatrixXi &F,
                              igl::AABB<Eigen::MatrixXd, 3> tree,
                              std::vector<Eigen::Index> &bnd_loop,
-                             std::vector<std::vector<double>> &distance_memo)
+                             Eigen::MatrixXd &distance_memo)
     {
-        Eigen::MatrixXd P;
-        Eigen::VectorXd sqrD;
+        Eigen::MatrixXd P1, P2, P3;
+        Eigen::VectorXd sqrD1, sqrD2, sqrD3;
         Eigen::VectorXi I;
         Eigen::MatrixXd C;
+        distance_memo.resize(bnd_loop.size(), bnd_loop.size());
 
         for(int i=0; i<bnd_loop.size()-1; i++){
-            P.resize(bnd_loop.size()-i-1, 3);
-            P.setZero();
+            P1.resize(bnd_loop.size() - i - 1, 3);
+            P2.resize(bnd_loop.size() - i - 1, 3);
+            P3.resize(bnd_loop.size() - i - 1, 3);
+
 
             for(int j=i+1; j<bnd_loop.size(); j++){
-                P.row(j) = (V.row(bnd_loop[i]) + V.row(bnd_loop[j])) / 2;
+                P1.row(j - i - 1) = 0.25 * V.row(bnd_loop[i]) + 0.75 * V.row(bnd_loop[j]);
+                P2.row(j - i - 1) = (V.row(bnd_loop[i]) + V.row(bnd_loop[j])) / 2;
+                P3.row(j - i - 1) = 0.75 * V.row(bnd_loop[i]) + 0.25 * V.row(bnd_loop[j]);
             }
 
-            tree.squared_distance(V, F, P, sqrD, I, C);
+            tree.squared_distance(V, F, P1, sqrD1, I, C);
+            tree.squared_distance(V, F, P2, sqrD2, I, C);
+            tree.squared_distance(V, F, P3, sqrD3, I, C);
 
             for(int j=i+1; j<bnd_loop.size(); j++){
-                distance_memo[i][j] = sqrD(j);
-                distance_memo[j][i] = sqrD(j);
+                distance_memo(i, j) = std::max(sqrD1(j-i-1), std::max(sqrD2(j-i-1), sqrD3(j-i-1)));
+                distance_memo(j, i) = distance_memo(i, j);
             }
         }
     }
@@ -69,9 +76,8 @@ namespace tri_strip{
                              igl::AABB<Eigen::MatrixXd, 3> tree,
                              std::vector<Eigen::Index> &bnd_loop,
                              std::vector<std::vector<TriangleStrip>> &memo,
-                             Eigen::MatrixXd &per_vert_normal,
-                             triangle_strip_quality_mode mode = normal_alignment,
-                             double normal_dot_prod_threshold = 0.8)
+                             Eigen::MatrixXd &distance_memo,
+                             double normal_dot_prod_threshold = 0.5)
     {
         for(int i=0; i<bnd_loop.size(); i++){
             auto& now = memo[i][(i+1)%bnd_loop.size()];
@@ -93,6 +99,7 @@ namespace tri_strip{
 
                 int end_vert_idx = (start_vert_idx + candidate_size + 1) % bnd_loop.size();
 
+                /*
                 if (mode == normal_alignment)
                 {
                     energy_value.resize(candidate_size);
@@ -119,7 +126,7 @@ namespace tri_strip{
 
                 if(mode == per_face_distance) {
                     tree.squared_distance(V, F, P, energy_value, I, C);
-                }
+                }*/
 
                 double min_score = std::numeric_limits<double>::max();
                 size_t next_vert = -1;
@@ -132,16 +139,7 @@ namespace tri_strip{
 
                     int target_idx = (start_vert_idx + candidate_idx + 1) % bnd_loop.size();
 
-                    auto start_vert = V.row(bnd_loop[start_vert_idx]);
-                    auto target_vert = V.row(bnd_loop[target_idx]);
-                    auto end_vert = V.row(bnd_loop[end_vert_idx]);
-
-                    Eigen::Vector3d v1 = start_vert - target_vert;
-                    Eigen::Vector3d v2 = end_vert - target_vert;
-
-                    double area = v1.cross(v2).norm() / 2;
-
-                    double now_score = energy_value(candidate_idx);
+                    double now_score = std::max(distance_memo(start_vert_idx, target_idx), distance_memo(target_idx, end_vert_idx));
                     now_score = std::max(memo[start_vert_idx][target_idx].cost, now_score);
                     now_score = std::max(memo[target_idx][end_vert_idx].cost, now_score);
 
@@ -222,7 +220,9 @@ namespace tri_strip{
 
         Eigen::MatrixXd N;
         igl::per_vertex_normals(V, F, N);
-        fill_triangles_loop(V, F, tree, bnd_loop, memo, N, mode);
+        Eigen::MatrixXd distance_memo;
+        precompute_distance(V, F, tree, bnd_loop, distance_memo);
+        fill_triangles_loop(V, F, tree, bnd_loop, memo, distance_memo);
 
         //std::cerr << "fill done" << std::endl;
 

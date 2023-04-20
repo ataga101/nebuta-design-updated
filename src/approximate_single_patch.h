@@ -14,7 +14,7 @@ namespace approximate_single_patch {
     enum approximation_mode {
         MITANI, QSlim, DP_normal, DP_perface_distance
     };
-    approximation_mode approx_mode;
+    approximation_mode approx_mode = DP_perface_distance;
 
     void approximate_single_patch(Eigen::MatrixXd &V, Eigen::MatrixXi &F,
                                   Eigen::MatrixXd &resultV, Eigen::MatrixXi &resultF) {

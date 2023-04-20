@@ -64,7 +64,7 @@ public:
 
     static ScalarType & MaxGaussImageThickness()
     {
-        static ScalarType MaxV = 0.00075;
+        static ScalarType MaxV = 0.0012;
         return MaxV;
     }
 
@@ -76,7 +76,7 @@ public:
 
     static ScalarType & MaxHausdorff()
     {
-        static ScalarType MaxV = 0.01;
+        static ScalarType MaxV = 0.03;
         return MaxV;
     }
 
@@ -220,7 +220,7 @@ public:
             Eigen::MatrixXi F, resultF;
 
             vcg::tri::MeshToMatrix< MeshType >::GetTriMeshData( m, F, V );
-            double threshold = MaxHausdorff() / m.bbox.Diag();
+            double threshold = MaxHausdorff();
             approximate_single_patch::approximate_single_patch(V, F, resultV, resultF);
 
             double hausdorff;

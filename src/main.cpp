@@ -48,6 +48,12 @@ void callback() {
         nebutaManager.update_visualization();
     }
 
+    ImGui::SameLine();
+    if (ImGui::Button("Do Test")){
+        nebutaManager.do_test();
+        nebutaManager.update_visualization();
+    }
+
     ImGui::Text("Mesh Result");
     static int display_mesh_mode = 0;
     enum {
@@ -87,7 +93,7 @@ void callback() {
     }
 
     if(ImGui::TreeNode("Patch Quality Measures")) {
-        static int patch_quality_mode = 2;
+        static int patch_quality_mode = nebutaManager.get_patch_quality_mode();
         enum {
             CONFORMAL,
             ARAP,
@@ -126,7 +132,7 @@ void callback() {
         }
         if (patch_quality_mode == GAUSSIMAGETHINNESS) {
             float maxV = MeshQuality<TraceMesh>::MaxGaussImageThickness() * 100;
-            ImGui::SliderFloat("Threshold", &maxV, 0.0f, 0.1f);
+            ImGui::SliderFloat("Threshold", &maxV, 0.0f, 0.3f);
             MeshQuality<TraceMesh>::MaxGaussImageThickness() = maxV / 100;
         }
         if (patch_quality_mode == HAUSDORFFDISTANCE) {
@@ -139,20 +145,19 @@ void callback() {
     if(ImGui::TreeNode("Developable Approximation Method")) {
         static int approximation_mode = 1;
         enum {
-            MITANI,
             QSLIM,
-            DP_NORMAL,
             DP_PERFACE_DISTANCE
         };
+        ImGui::RadioButton("Mitani and Suzuki, 2004", &approximation_mode, QSLIM);
+        ImGui::RadioButton("DP Per-Edge Distance", &approximation_mode, DP_PERFACE_DISTANCE);
 
-        if (ImGui::RadioButton("Mitani and Suzuki", &approximation_mode, MITANI)) {
-            approximate_single_patch::approx_mode = approximate_single_patch::MITANI;
-        } else if (ImGui::RadioButton("QSLIM", &approximation_mode, QSLIM)) {
-            approximate_single_patch::approx_mode = approximate_single_patch::QSlim;
-        } else if (ImGui::RadioButton("DP Normal", &approximation_mode, DP_NORMAL)) {
-            approximate_single_patch::approx_mode = approximate_single_patch::DP_normal;
-        } else if (ImGui::RadioButton("DP PerFace Distance", &approximation_mode, DP_PERFACE_DISTANCE)) {
-            approximate_single_patch::approx_mode = approximate_single_patch::DP_perface_distance;
+        switch (approximation_mode) {
+            case QSLIM:
+                approximate_single_patch::approx_mode = approximate_single_patch::QSlim;
+                break;
+            case DP_PERFACE_DISTANCE:
+                approximate_single_patch::approx_mode = approximate_single_patch::DP_perface_distance;
+                break;
         }
         ImGui::TreePop();
     }
@@ -166,6 +171,11 @@ void callback() {
     float sample_ratio_slider = nebutaManager.sample_ratio;
     ImGui::SliderFloat("Sample ratio", &sample_ratio_slider, 0.0f, 1.0f);
     nebutaManager.sample_ratio = sample_ratio_slider;
+
+    ImGui::Text("Patch count: %d", nebutaManager.get_patch_cnt());
+    ImGui::Text("Wire count: %d", nebutaManager.get_wire_cnt());
+    ImGui::Text("Wire length: %f", nebutaManager.get_wire_length());
+    ImGui::Text("Approximation error: %f", nebutaManager.get_hausdorff_distance());
 }
 
 int main(int argc, char **argv) {
