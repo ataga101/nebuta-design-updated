@@ -20,7 +20,7 @@ void svg_writer::finish() {
 }
 
 svg_writer::svg_writer(std::string file_name, double width, double height) {
-    svg_scale = 30;
+    svg_scale = 30 * 1.259862560447951;
     fontsize = 0.1;
     svg_file_name = file_name;
     max_width = width;

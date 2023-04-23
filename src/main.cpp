@@ -61,7 +61,8 @@ void callback() {
         REMESHED,
         PARTITIONED,
         APPROXIMATED,
-        FLATTENED
+        FLATTENED,
+        WIREONLY
     };
     if (ImGui::RadioButton("Original", &display_mesh_mode, ORIGINAL)) {
         nebutaManager.set_visualization_mode(NebutaManager::ORIGINAL);
@@ -84,6 +85,10 @@ void callback() {
     }
     if (ImGui::RadioButton("Fabrication Mode", &display_mesh_mode, FLATTENED)) {
         nebutaManager.set_visualization_mode(NebutaManager::FABRICATIONMODE);
+        nebutaManager.update_visualization();
+    }
+    if (ImGui::RadioButton("Wire Only", &display_mesh_mode, WIREONLY)){
+        nebutaManager.set_visualization_mode(NebutaManager::WIREONLY);
         nebutaManager.update_visualization();
     }
     if (display_mesh_mode == FLATTENED) {
@@ -119,25 +124,25 @@ void callback() {
 
         if (patch_quality_mode == CONFORMAL || patch_quality_mode == ARAP) {
             float minQ = MeshQuality<TraceMesh>::MinQ();
-            ImGui::SliderFloat("MinQ", &minQ, -1.0f, 0.0f);
+            ImGui::InputFloat("MinQ", &minQ);
             MeshQuality<TraceMesh>::MinQ() = minQ;
             float maxQ = MeshQuality<TraceMesh>::MaxQ();
-            ImGui::SliderFloat("MaxQ", &maxQ, 0.0f, 1.0f);
+            ImGui::InputFloat("MaxQ", &maxQ);
             MeshQuality<TraceMesh>::MaxQ() = maxQ;
         }
         if (patch_quality_mode == GAUSSIANCURVATURE) {
             float maxV = MeshQuality<TraceMesh>::MaxSumOfGaussianCurvature();
-            ImGui::SliderFloat("Threshold", &maxV, 0.0f, 10.0f);
+            ImGui::InputFloat("Threshold", &maxV);
             MeshQuality<TraceMesh>::MaxSumOfGaussianCurvature() = maxV;
         }
         if (patch_quality_mode == GAUSSIMAGETHINNESS) {
             float maxV = MeshQuality<TraceMesh>::MaxGaussImageThickness() * 100;
-            ImGui::SliderFloat("Threshold", &maxV, 0.0f, 0.3f);
+            ImGui::InputFloat("Threshold", &maxV);
             MeshQuality<TraceMesh>::MaxGaussImageThickness() = maxV / 100;
         }
         if (patch_quality_mode == HAUSDORFFDISTANCE) {
             float maxV = MeshQuality<TraceMesh>::MaxHausdorff();
-            ImGui::SliderFloat("Threshold", &maxV, 0.0f, 0.2f);
+            ImGui::InputFloat("Threshold", &maxV);
             MeshQuality<TraceMesh>::MaxHausdorff() = maxV;
         }
         ImGui::TreePop();
@@ -171,6 +176,8 @@ void callback() {
     float sample_ratio_slider = nebutaManager.sample_ratio;
     ImGui::SliderFloat("Sample ratio", &sample_ratio_slider, 0.0f, 1.0f);
     nebutaManager.sample_ratio = sample_ratio_slider;
+
+    ImGui::InputDouble("Height (cm)", &nebutaManager.height_in_cm);
 
     ImGui::Text("Patch count: %d", nebutaManager.get_patch_cnt());
     ImGui::Text("Wire count: %d", nebutaManager.get_wire_cnt());
