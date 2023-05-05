@@ -14,9 +14,6 @@
 Eigen::MatrixXd meshV;
 Eigen::MatrixXi meshF;
 
-// Options for algorithms
-int iVertexSource = 7;
-
 NebutaManager nebutaManager;
 
 void callback() {
