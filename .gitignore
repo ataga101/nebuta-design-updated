@@ -41,3 +41,8 @@ tags
 *.exe
 *.out
 *.app
+
+# Results
+*.txt
+*.svg
+*.obj
