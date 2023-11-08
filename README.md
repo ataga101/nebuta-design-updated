@@ -11,14 +11,14 @@ cd build
 cmake ..
 make -j4
 
-./bin/nebuta-designer ../bunny.obj
+./bin/nebuta-designer ../data/bunny.obj
 ```
 
 ## Usage
 
-After the demo is launched, click the `"Save SVG"` button to segment mesh and following files are generated.
-- **SVG file** (`*_2d_pattern*.svg`). Contains the 2D pattern of each paper patch.
-- **Wire Position file** (`*_wire_positions.txt`). Contains the vertices positions of the polyline wire. Segments start with `|L|` means the path is a loop, and `|P|` means the path is not a loop.
+After the demo is launched, click the `"Save SVG"` button to segment mesh, and the following files are generated.
+- **SVG file** (`*_2d_pattern*.svg`): Contains the 2D pattern of each paper patch.
+- **Wire position file** (`*_wire_positions.txt`): Contains the vertices positions of the polyline wire. Segments start with `|L|` means the wire is a loop, and `|P|` means the wire is not a loop.
 
 
 ## Note
