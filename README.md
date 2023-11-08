@@ -5,7 +5,7 @@ This repository contains the code for the project ["Computational Design of Nebu
 
 ```
 git clone --recurse-submodules https://github.com/ataga101/nebuta-design-updated.git
-cd 
+cd nebuta-design-updated
 mkdir build
 cd build
 cmake ..
