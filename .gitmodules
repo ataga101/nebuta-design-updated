@@ -1,9 +1,9 @@
-[submodule "deps/libigl"]
-	path = deps/libigl
-	url = https://github.com/libigl/libigl.git
 [submodule "deps/CoMISo"]
 	path = deps/CoMISo
 	url = https://github.com/libigl/CoMISo.git
 [submodule "deps/polyscope"]
 	path = deps/polyscope
 	url = https://github.com/nmwsharp/polyscope.git
+[submodule "deps/libigl"]
+	path = deps/libigl
+	url = https://github.com/libigl/libigl.git
