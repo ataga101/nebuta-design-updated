@@ -7,6 +7,3 @@
 [submodule "deps/polyscope"]
 	path = deps/polyscope
 	url = https://github.com/nmwsharp/polyscope.git
-[submodule "deps/DevelopabilityOfTriangleMeshes"]
-	path = deps/DevelopabilityOfTriangleMeshes
-	url = https://github.com/odedstein/DevelopabilityOfTriangleMeshes.git
