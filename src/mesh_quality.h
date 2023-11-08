@@ -76,7 +76,7 @@ public:
 
     static ScalarType & MaxHausdorff()
     {
-        static ScalarType MaxV = 0.03;
+        static ScalarType MaxV = 0.02;
         return MaxV;
     }
 

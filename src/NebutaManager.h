@@ -91,7 +91,7 @@ public:
     double Drift = 100;
     double sample_ratio = 1;
     double height_in_cm = 14.1;
-    bool split_on_removal = true;
+    bool split_on_removal = false;
     bool CClarkability = false;
     bool match_valence = false;
     bool check_quality_functor = true;
@@ -352,6 +352,19 @@ void NebutaManager::remesh_and_field_computation() {
     polyscopeRemeshedMesh = polyscope::registerSurfaceMesh("Remeshed Mesh", remeshedV, remeshedF);
     polyscopeRemeshedMesh->setSurfaceColor({0.9, 0.9, 0.9});
     polyscopeRemeshedMesh->setEdgeWidth(1.);
+
+    // Add RoSy field visualization
+    Eigen::MatrixX3d RoSyField(remeshedF.rows(), 3);
+    Eigen::MatrixX2d RoSyField2D = Eigen::MatrixX2d::Zero(remeshedF.rows(), 2);
+    for(int i=0; i<remeshedF.rows(); i++){
+        RoSyField(i, 0) = originalVCGMesh.face[i].PD1().X();
+        RoSyField(i, 1) = originalVCGMesh.face[i].PD1().Y();
+        RoSyField(i, 2) = originalVCGMesh.face[i].PD1().Z();
+        RoSyField2D(i, 0) = 1;
+    }
+    polyscopeRemeshedMesh->setFaceTangentBasisX(RoSyField);
+    polyscopeRemeshedMesh->addFaceIntrinsicVectorQuantity("RoSy Field", RoSyField2D, 4);
+
     current_mode = REMESHED;
     remeshed = true;
 }
