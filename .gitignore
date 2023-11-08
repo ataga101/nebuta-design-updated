@@ -43,6 +43,7 @@ tags
 *.app
 
 # Results
-*.txt
+*positions.txt
+*indices.txt
 *.svg
 *.obj
